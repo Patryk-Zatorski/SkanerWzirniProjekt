@@ -28,7 +28,7 @@ def scan_installed_programs():
 def scan_with_nmap(ip):
     try:
         # Wywołanie polecenia Nmap i przechwycenie wyników
-        result = subprocess.run(['nmap', '-p-', '-sV', '--open', ip], capture_output=True, text=True, timeout=300)
+        result = subprocess.run(['nmap', '-sV', '--open', ip], capture_output=True, text=True, timeout=300)
         
         # Sprawdzenie, czy nie wystąpiły błędy podczas wywoływania polecenia
         if result.returncode != 0:
@@ -36,16 +36,17 @@ def scan_with_nmap(ip):
             return None
         
         # Analiza wyników skanowania
-        services = {}
+        services = []
         lines = result.stdout.split('\n')
         for line in lines:
             # Szukanie linii zawierających informacje o usługach na portach
-            match = re.match(r'(\d+)/(\w+)\s+open\s+(\S+)', line)
+            match = re.match(r'(\d+)/(\w+)\s+open\s+(.+?)\s+(.+)\s*', line)
             if match:
                 port = int(match.group(1))
                 protocol = match.group(2)
-                service_version = match.group(3)
-                services[(port, protocol)] = service_version
+                service = match.group(3)
+                service_version = match.group(4)
+                services.append((port,protocol,service,service_version))
         
         return services
     
@@ -54,16 +55,23 @@ def scan_with_nmap(ip):
         return None
 
 def main():
-    if len(sys.argv) == 1:
-        pass
+    if len(sys.argv) == 2:
+        scanned_programs = scan_with_nmap(sys.argv[1])
+        if scanned_programs:
+            print("Przeskanowane usługi i ich wersje:")
+            for services in scanned_programs:
+                print(services)
+        else:
+            print("Nie udało się przeskanować adresu IP.")
     else:
         installed_programs = scan_installed_programs()
         if installed_programs:
             print("Zainstalowane programy i ich wersje:")
             for program, version in installed_programs.items():
-                print(program, "-", version)
+                print(program, version)
         else:
             print("Nie znaleziono zainstalowanych programów.")
 
 if __name__ == "__main__":
     main()
+    
